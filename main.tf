@@ -6,7 +6,7 @@ provider "aws" {
 resource "aws_vpc" "demo-vpc" {
     cidr_block = "90.0.0.0/16"
     tags = {
-        Name = "jenkins-vpc"
+        Name = "jenkins-terraform-vpc"
     }
   
 }
