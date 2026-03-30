@@ -3,7 +3,7 @@ provider "aws" {
 }
 
 variable "env" {
-  description = "Environment (dev/qa/prod)"
+  description = "Environment"
   type        = string
 }
 
