@@ -107,7 +107,7 @@ pipeline {
                     } else if (params.ACTION == 'destroy') {
 
                         // Safety confirmation
-                        input message: "⚠️ Confirm DESTROY for ${params.ENV}?"
+                        // input message: " Confirm DESTROY for ${params.ENV}?"
 
                         sh """
                         terraform destroy -auto-approve -var-file="${params.ENV}.tfvars"
