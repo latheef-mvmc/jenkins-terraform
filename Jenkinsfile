@@ -11,6 +11,12 @@ pipeline {
             choices: ['dev', 'qa', 'prod'],
             description: 'Select Environment'
         )
+        
+        choice(
+            name: 'ACTION',
+            choices: ['apply', 'destroy'],
+            description: 'Terraform Action'
+        )
     }
 
     environment {
@@ -29,7 +35,6 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
-                echo "Cloning terra-workspace branch..."
                 git branch: 'terra-workspace',
                     url: 'https://github.com/latheef-mvmc/jenkins-terraform.git'
             }
@@ -38,8 +43,6 @@ pipeline {
         stage('Fetch AWS Credentials') {
             steps {
                 script {
-                    echo "Fetching AWS credentials from Secrets Manager..."
-
                     def secret = sh(
                         script: """
                         aws secretsmanager get-secret-value \
@@ -61,23 +64,14 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                sh '''
-                echo "Initializing Terraform..."
-                terraform init
-                '''
+                sh 'terraform init'
             }
         }
 
         stage('Workspace Setup') {
             steps {
                 sh '''
-                echo "Using workspace: ${ENV}"
-
-                terraform workspace list
-
                 terraform workspace select ${ENV} || terraform workspace new ${ENV}
-
-                terraform workspace show
                 '''
             }
         }
@@ -85,40 +79,34 @@ pipeline {
         stage('Terraform Plan') {
             steps {
                 sh '''
-                echo "Planning for ${ENV}..."
                 terraform plan -var-file="${ENV}.tfvars"
                 '''
             }
         }
 
-        stage('Approval for PROD') {
-            when {
-                expression { params.ENV == 'prod' }
-            }
+        stage('Terraform Apply / Destroy') {
             steps {
-                input message: "Do you want to deploy to PROD?"
-            }
-        }
-
-        stage('Terraform Apply') {
-            steps {
-                sh '''
-                echo "Applying Terraform for ${ENV}..."
-                terraform apply -auto-approve -var-file="${ENV}.tfvars"
-                '''
+                script {
+                    if (params.ACTION == 'apply') {
+                        sh '''
+                        terraform apply -auto-approve -var-file="${ENV}.tfvars"
+                        '''
+                    } else if (params.ACTION == 'destroy') {
+                        sh '''
+                        terraform destroy -auto-approve -var-file="${ENV}.tfvars"
+                        '''
+                    }
+                }
             }
         }
     }
 
     post {
         success {
-            echo "✅ Deployment SUCCESS for ${ENV}"
+            echo "SUCCESS for ${params.ENV} (${params.ACTION})"
         }
         failure {
-            echo "❌ Deployment FAILED for ${ENV}"
-        }
-        always {
-            echo "Pipeline execution completed."
+            echo "FAILED for ${params.ENV} (${params.ACTION})"
         }
     }
 }

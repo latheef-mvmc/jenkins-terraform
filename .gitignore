@@ -3,5 +3,6 @@
 .terraform
 *.tfstate
 *.tfstate.*
+jenkinsfile.old
 
 terraform.tfstate.d
