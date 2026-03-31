@@ -15,7 +15,7 @@ pipeline {
 
     environment {
         AWS_DEFAULT_REGION = 'ap-south-1'
-        SECRET_NAME = 'jenkins-aws-keys'
+        SECRET_NAME = 'aws-jenkins-sec-keys'
         TF_IN_AUTOMATION = "true"
     }
 
