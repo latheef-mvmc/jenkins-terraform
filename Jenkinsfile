@@ -11,7 +11,7 @@ pipeline {
             choices: ['dev', 'qa', 'prod'],
             description: 'Select Environment'
         )
-        
+
         choice(
             name: 'ACTION',
             choices: ['apply', 'destroy'],
@@ -35,6 +35,7 @@ pipeline {
 
         stage('Checkout Code') {
             steps {
+                echo "Cloning terra-workspace branch..."
                 git branch: 'terra-workspace',
                     url: 'https://github.com/latheef-mvmc/jenkins-terraform.git'
             }
@@ -43,6 +44,8 @@ pipeline {
         stage('Fetch AWS Credentials') {
             steps {
                 script {
+                    echo "Fetching AWS credentials..."
+
                     def secret = sh(
                         script: """
                         aws secretsmanager get-secret-value \
@@ -64,37 +67,51 @@ pipeline {
 
         stage('Terraform Init') {
             steps {
-                sh 'terraform init'
+                sh '''
+                echo "Initializing Terraform..."
+                terraform init
+                '''
             }
         }
 
         stage('Workspace Setup') {
             steps {
-                sh '''
-                terraform workspace select ${ENV} || terraform workspace new ${ENV}
-                '''
+                sh """
+                echo "Selecting workspace: ${params.ENV}"
+                terraform workspace select ${params.ENV} || terraform workspace new ${params.ENV}
+                terraform workspace show
+                """
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                sh '''
-                terraform plan -var-file="${ENV}.tfvars"
-                '''
+                sh """
+                echo "Running plan for ${params.ENV}"
+                terraform plan -var-file="${params.ENV}.tfvars"
+                """
             }
         }
 
-        stage('Terraform Apply / Destroy') {
+        stage('Terraform Action (Apply / Destroy)') {
             steps {
                 script {
+                    echo "Action: ${params.ACTION}"
+
                     if (params.ACTION == 'apply') {
-                        sh '''
-                        terraform apply -auto-approve -var-file="${ENV}.tfvars"
-                        '''
+
+                        sh """
+                        terraform apply -auto-approve -var-file="${params.ENV}.tfvars"
+                        """
+
                     } else if (params.ACTION == 'destroy') {
-                        sh '''
-                        terraform destroy -auto-approve -var-file="${ENV}.tfvars"
-                        '''
+
+                        // Safety confirmation
+                        input message: "⚠️ Confirm DESTROY for ${params.ENV}?"
+
+                        sh """
+                        terraform destroy -auto-approve -var-file="${params.ENV}.tfvars"
+                        """
                     }
                 }
             }
@@ -103,10 +120,13 @@ pipeline {
 
     post {
         success {
-            echo "SUCCESS for ${params.ENV} (${params.ACTION})"
+            echo " SUCCESS: ${params.ACTION} completed for ${params.ENV}"
         }
         failure {
-            echo "FAILED for ${params.ENV} (${params.ACTION})"
+            echo " FAILED: ${params.ACTION} failed for ${params.ENV}"
+        }
+        always {
+            echo "Pipeline execution completed."
         }
     }
 }
