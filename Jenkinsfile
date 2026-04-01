@@ -25,7 +25,8 @@ pipeline {
         TF_IN_AUTOMATION = "true"
     }
 
-    
+    stages {   // ✅ MISSING BLOCK ADDED
+
         stage('Checkout Code') {
             steps {
                 echo "Cloning terra-workspace branch..."
@@ -99,8 +100,7 @@ pipeline {
 
                     } else if (params.ACTION == 'destroy') {
 
-                        // Safety confirmation
-                         input message: " Confirm DESTROY for ${params.ENV}?"
+                        input message: " Confirm DESTROY for ${params.ENV}?"
 
                         sh """
                         terraform destroy -auto-approve -var-file="${params.ENV}.tfvars"
