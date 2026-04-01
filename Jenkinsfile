@@ -25,14 +25,7 @@ pipeline {
         TF_IN_AUTOMATION = "true"
     }
 
-    stages {
-
-        stage('Clean Workspace') {
-            steps {
-                deleteDir()
-            }
-        }
-
+    
         stage('Checkout Code') {
             steps {
                 echo "Cloning terra-workspace branch..."
