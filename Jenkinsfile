@@ -25,7 +25,7 @@ pipeline {
         TF_IN_AUTOMATION = "true"
     }
 
-    stages {   // ✅ MISSING BLOCK ADDED
+    stages {   // MISSING BLOCK ADDED
 
         stage('Checkout Code') {
             steps {
