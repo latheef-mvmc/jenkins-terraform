@@ -1,26 +1,50 @@
 pipeline {
     agent any 
 
+    options {
+        timestamps()
+    }
+
     environment {
-        REPO_URL = "https://github.com/latheef-mvmc/jenkins-terraform.git"
         AWS_REGION = "ap-south-1"
     }
 
     stages {
-        stage('Checkout code') {
+
+        //  Skip unwanted branches (like main)
+        stage('Check Branch') {
+            when {
+                not {
+                    anyOf {
+                        branch 'dev'
+                        branch 'qa'
+                        branch 'prod'
+                    }
+                }
+            }
             steps {
-                echo "Checking out branch: ${env.BRANCH_NAME}"
-                git branch: "${env.BRANCH_NAME}", url: "${REPO_URL}"
+                echo "Skipping branch: ${env.BRANCH_NAME}"
+                script {
+                    currentBuild.result = 'NOT_BUILT'
+                    error("Stopping pipeline for non-target branch")
+                }
             }
         }
 
-        stage('Terraform init') {
+        //  Jenkins already does checkout automatically → no need git step
+        stage('Checkout') {
+            steps {
+                echo "Using branch: ${env.BRANCH_NAME}"
+            }
+        }
+
+        stage('Terraform Init') {
             steps {
                 sh 'terraform init'
             }
         }
 
-        stage('Select workspace') {
+        stage('Select Workspace') {
             steps {
                 script {
                     def ws = env.BRANCH_NAME
@@ -32,28 +56,53 @@ pipeline {
             }
         }
 
-        stage('Terraform validate') {
+        stage('Terraform Validate') {
             steps {
                 sh 'terraform validate'
             }
         }
 
-        stage('Terraform plan') {
+        stage('Terraform Plan') {
             steps {
-                sh "terraform plan -var-file=${env.BRANCH_NAME}.tfvars -out=tfplan"
+                sh """
+                terraform plan -var-file=${env.BRANCH_NAME}.tfvars -out=tfplan
+                """
             }
         }
 
-        stage('Terraform apply') {
+        //  Proper condition (FIXED)
+        stage('Terraform Apply') {
             when {
-                branch 'dev'
-                branch 'qa'
+                anyOf {
+                    branch 'dev'
+                    branch 'qa'
+                    branch 'prod'
+                }
+            }
+            steps {
+                sh """
+                terraform apply -auto-approve tfplan
+                """
+            }
+        }
+
+        //  Optional (Best practice)
+        stage('Approval for PROD') {
+            when {
                 branch 'prod'
             }
             steps {
-                sh "terraform apply -var-file=${env.BRANCH_NAME}.tfvars -auto-approve tfplan"
+                input message: "Approve Production Deployment?"
             }
         }
     }
-}
 
+    post {
+        success {
+            echo " Deployment successful"
+        }
+        failure {
+            echo " Pipeline failed"
+        }
+    }
+}
