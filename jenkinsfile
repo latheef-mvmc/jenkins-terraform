@@ -1,52 +1,57 @@
 pipeline {
-    agent any
-
-    triggers {
-    githubPush()
-}
+    agent any 
 
     environment {
-        AWS_DEFAULT_REGION = 'ap-south-1'
+        REPO_URL = "https://github.com/latheef-mvmc/jenkins-terraform.git"
+        AWS_REGION = "ap-south-1"
     }
 
     stages {
-        stage('Checkout') {
+        stage('Checkout code') {
             steps {
-                echo 'Checking out code...'
-                git branch: 'main', url: 'https://github.com/latheef-mvmc/jenkins-terraform.git'
+                echo "Checking out branch: ${env.BRANCH_NAME}"
+                git branch: "${env.BRANCH_NAME}", url: "${REPO_URL}"
             }
         }
 
-        stage('Terraform Init') {
+        stage('Terraform init') {
             steps {
-                echo 'Initializing Terraform...'
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-jenkins']
-                ]) {
-                    sh 'terraform init'
+                sh 'terraform init'
+            }
+        }
+
+        stage('Select workspace') {
+            steps {
+                script {
+                    def ws = env.BRANCH_NAME
+                    sh """
+                    terraform workspace list | grep ${ws} || terraform workspace new ${ws}
+                    terraform workspace select ${ws}
+                    """
                 }
             }
         }
 
-        stage('Terraform Plan') {
+        stage('Terraform validate') {
             steps {
-                echo 'Planning...'
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-jenkins']
-                ]) {
-                    sh 'terraform plan'
-                }
+                sh 'terraform validate'
             }
         }
 
-        stage('Terraform Apply') {
+        stage('Terraform plan') {
             steps {
-                echo 'Applying Terraform...'
-                withCredentials([
-                    [$class: 'AmazonWebServicesCredentialsBinding', credentialsId: 'aws-jenkins']
-                ]) {
-                    sh 'terraform destroy -no-color  -auto-approve'
-                }
+                sh "terraform plan -var-file=${env.BRANCH_NAME}.tfvars -out=tfplan"
+            }
+        }
+
+        stage('Terraform apply') {
+            when {
+                branch 'dev'
+                branch 'qa'
+                branch 'prod'
+            }
+            steps {
+                sh "terraform apply -var-file=${env.BRANCH_NAME}.tfvars -auto-approve tfplan"
             }
         }
     }
