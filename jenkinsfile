@@ -37,41 +37,36 @@ pipeline {
             }
         }
 
-       stage('Terraform Init') {
-    steps {
-        sh 'terraform init'
-    }
-}
+        // ✅ Run from ROOT (IMPORTANT FIX)
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init'
+            }
+        }
 
         stage('Select Workspace') {
             steps {
-                dir('terra-workspace') {
-                    script {
-                        def ws = env.BRANCH_NAME
-                        sh """
-                        terraform workspace list | grep ${ws} || terraform workspace new ${ws}
-                        terraform workspace select ${ws}
-                        """
-                    }
+                script {
+                    def ws = env.BRANCH_NAME
+                    sh """
+                    terraform workspace list | grep ${ws} || terraform workspace new ${ws}
+                    terraform workspace select ${ws}
+                    """
                 }
             }
         }
 
         stage('Terraform Validate') {
             steps {
-                dir('terra-workspace') {
-                    sh 'terraform validate'
-                }
+                sh 'terraform validate'
             }
         }
 
         stage('Terraform Plan') {
             steps {
-                dir('terra-workspace') {
-                    sh """
-                    terraform plan -var-file=${env.BRANCH_NAME}.tfvars -out=tfplan
-                    """
-                }
+                sh """
+                terraform plan -var-file=${env.BRANCH_NAME}.tfvars -out=tfplan
+                """
             }
         }
 
@@ -94,11 +89,9 @@ pipeline {
                 }
             }
             steps {
-                dir('terra-workspace') {
-                    sh """
-                    terraform apply -auto-approve tfplan
-                    """
-                }
+                sh """
+                terraform apply -auto-approve tfplan
+                """
             }
         }
     }
