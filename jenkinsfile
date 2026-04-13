@@ -37,13 +37,11 @@ pipeline {
             }
         }
 
-        stage('Terraform Init') {
-            steps {
-                dir('terra-workspace') {
-                    sh 'terraform init'
-                }
-            }
-        }
+       stage('Terraform Init') {
+    steps {
+        sh 'terraform init'
+    }
+}
 
         stage('Select Workspace') {
             steps {
