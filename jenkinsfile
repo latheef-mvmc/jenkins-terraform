@@ -11,7 +11,7 @@ pipeline {
 
     stages {
 
-        // 🔴 Ignore unwanted branches like main
+        //  Ignore unwanted branches like main
         stage('Check Branch') {
             when {
                 not {
@@ -37,7 +37,7 @@ pipeline {
             }
         }
 
-        // ✅ Run from ROOT (IMPORTANT FIX)
+        //  Run from ROOT (IMPORTANT FIX)
         stage('Terraform Init') {
             steps {
                 sh 'terraform init'
@@ -70,7 +70,7 @@ pipeline {
             }
         }
 
-        // 🔴 Approval before PROD
+        //  Approval before PROD
         stage('Approval for PROD') {
             when {
                 branch 'prod'
@@ -98,10 +98,10 @@ pipeline {
 
     post {
         success {
-            echo "✅ Deployment successful"
+            echo " Deployment successful"
         }
         failure {
-            echo "❌ Pipeline failed"
+            echo " Pipeline failed"
         }
     }
 }
