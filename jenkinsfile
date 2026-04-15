@@ -1,0 +1,59 @@
+pipeline {
+    agent any
+
+    parameters {
+        string(name: 'TF_PLAN_NAME', defaultValue: 'tfplan-dev-17', description: 'Enter tfplan file name from Nexus')
+    }
+
+    environment {
+        GIT_REPO = "https://github.com/latheef-devops/terraform-project.git"
+        NEXUS_URL = "http://192.168.19.129:8081/repository/terraformartifacts"
+        NEXUS_USER = "admin"
+        NEXUS_PASS = "admin123"
+    }
+
+    stages {
+
+        stage('Checkout Code') {
+            steps {
+                git branch: "dev", url: "${GIT_REPO}"
+            }
+        }
+
+        stage('Download tfplan from Nexus') {
+            steps {
+                sh """
+                echo "Downloading ${params.TF_PLAN_NAME}"
+                curl -u ${NEXUS_USER}:${NEXUS_PASS} -O ${NEXUS_URL}/${params.TF_PLAN_NAME}
+                """
+            }
+        }
+
+        stage('Verify Plan') {
+            steps {
+                sh "ls -l ${params.TF_PLAN_NAME}"
+            }
+        }
+
+        stage('Terraform Init') {
+            steps {
+                sh 'terraform init'
+            }
+        }
+
+        stage('Apply Terraform Plan') {
+            steps {
+                sh "terraform apply -auto-approve ${params.TF_PLAN_NAME}"
+            }
+        }
+    }
+
+    post {
+        success {
+            echo "✅ Applied ${params.TF_PLAN_NAME}"
+        }
+        failure {
+            echo "❌ Failed for ${params.TF_PLAN_NAME}"
+        }
+    }
+}
