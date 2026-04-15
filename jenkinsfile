@@ -3,12 +3,9 @@ pipeline {
 
     environment {
         GIT_REPO = "https://github.com/latheef-mvmc/jenkins-terraform.git"
-        NEXUS_URL = "http://192.168.19.129:8081/repository/terraformartifacts"
         BRANCH = "dev"
-    }
-
-    options {
-        disableConcurrentBuilds()
+        NEXUS_URL = "http://192.168.19.129:8081/repository/terraformartifacts"
+        TF_PLAN_NAME = "tfplan-dev-17"
     }
 
     stages {
@@ -19,30 +16,6 @@ pipeline {
             }
         }
 
-        stage('Find Latest tfplan from Nexus') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'nexus-cred',
-                    usernameVariable: 'USER',
-                    passwordVariable: 'PASS'
-                )]) {
-                    script {
-                        def latestPlan = sh(
-                            script: """
-                            curl -s -u $USER:$PASS ${NEXUS_URL}/ | \
-                            grep -o 'tfplan-${BRANCH}-[0-9]*' | \
-                            sort -V | tail -n 1
-                            """,
-                            returnStdout: true
-                        ).trim()
-
-                        env.TF_PLAN_NAME = latestPlan
-                        echo "Latest plan: ${env.TF_PLAN_NAME}"
-                    }
-                }
-            }
-        }
-
         stage('Download tfplan') {
             steps {
                 withCredentials([usernamePassword(
@@ -50,17 +23,17 @@ pipeline {
                     usernameVariable: 'USER',
                     passwordVariable: 'PASS'
                 )]) {
-                    sh """
-                    echo "Downloading ${TF_PLAN_NAME}"
-                    curl -u $USER:$PASS -O ${NEXUS_URL}/${TF_PLAN_NAME}
-                    """
+                    sh '''
+                    echo "Downloading $TF_PLAN_NAME"
+                    curl -u $USER:$PASS -O $NEXUS_URL/$TF_PLAN_NAME
+                    '''
                 }
             }
         }
 
-        stage('Verify tfplan') {
+        stage('Verify') {
             steps {
-                sh "ls -l ${TF_PLAN_NAME}"
+                sh 'ls -l'
             }
         }
 
@@ -70,16 +43,16 @@ pipeline {
             }
         }
 
-        stage('Apply Terraform Plan') {
+        stage('Apply') {
             steps {
-                sh "terraform apply -auto-approve ${TF_PLAN_NAME}"
+                sh 'terraform apply -auto-approve $TF_PLAN_NAME'
             }
         }
     }
 
     post {
         success {
-            echo "✅ Applied ${TF_PLAN_NAME}"
+            echo "✅ Apply completed successfully"
         }
         failure {
             echo "❌ Apply failed"
